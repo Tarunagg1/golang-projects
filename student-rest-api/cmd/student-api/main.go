@@ -13,6 +13,7 @@ import (
 
 	"githug.com/tarunagg1/student-api/internal/config"
 	student "githug.com/tarunagg1/student-api/internal/http/handlers"
+	"githug.com/tarunagg1/student-api/internal/storage/sqlite"
 )
 
 func main() {
@@ -21,11 +22,20 @@ func main() {
 	cfg := config.MustLoad()
 
 	// databse setup
+	storage, err := sqlite.New(cfg)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	slog.Info("Database connection establish", slog.String("env", cfg.Env))
 
 	// setup router
 	router := http.NewServeMux()
 
-	router.HandleFunc("POST /api/students", student.New())
+	router.HandleFunc("POST /api/students", student.New(storage))
+	router.HandleFunc("POST /api/students/{ID}", student.GetById(storage))
+	router.HandleFunc("GET /api/students/", student.GetStudentsList(storage))
 
 	// setup server
 	server := http.Server{
