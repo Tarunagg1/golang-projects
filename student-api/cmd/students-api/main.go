@@ -12,22 +12,30 @@ import (
 	"time"
 
 	"github.com/Tarunagg1/student-api/internal/config"
+	"github.com/Tarunagg1/student-api/internal/http/handlers/student"
+	sqllite "github.com/Tarunagg1/student-api/internal/storage/sqlite"
 )
 
 func main() {
 	// load config
 	cfg := config.MustLoad()
 
-	// logger
+	// loggerz
 
 	// db setup
+
+	_, err := sqllite.New(cfg)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	slog.Info("Storage initialize")
 
 	// setup router
 	router := http.NewServeMux()
 
-	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome to students api"))
-	})
+	router.HandleFunc("POST /api/students", student.New())
 
 	// setup server
 	server := http.Server{
