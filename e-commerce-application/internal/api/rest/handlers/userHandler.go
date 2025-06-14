@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"fmt"
 	"go-ecommerce-app/internal/api/rest"
 	"go-ecommerce-app/internal/dto"
+	"go-ecommerce-app/internal/repository"
 	"go-ecommerce-app/internal/service"
 	"net/http"
 
@@ -16,21 +18,24 @@ type UserHandler struct {
 func SetupUserRoutes(rh *rest.RestHandler) {
 	app := rh.App
 
-	pubRoutes := app.Group("/api/v1/user")
-
-	svc := service.UserService{}
+	svc := service.UserService{
+		Repo: repository.NewUserRepository(rh.DB),
+		Auth: rh.Auth,
+	}
 
 	handler := UserHandler{
 		usvc: svc,
 	}
 
+	pubRoutes := app.Group("/api/v1/user")
 	// Public routes
 
 	pubRoutes.Post("/register", handler.RegisterUser)
 	pubRoutes.Post("/login", handler.LoginUser)
 
 	// Private routes
-	pvtRoutes := app.Group("/api/v1/user")
+
+	pvtRoutes := app.Group("/api/v1/user", rh.Auth.Authorize)
 
 	pvtRoutes.Get("/verify", handler.GetVerificationCode)
 	pvtRoutes.Post("/verify", handler.Verify)
@@ -78,9 +83,33 @@ func (h *UserHandler) RegisterUser(ctx *fiber.Ctx) error {
 }
 
 func (h *UserHandler) LoginUser(ctx *fiber.Ctx) error {
+
+	user := dto.UserLogin{}
+
+	fmt.Println("Login user", user)
+
+	err := ctx.BodyParser(&user)
+
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid request body",
+			"status":  http.StatusBadRequest,
+		})
+	}
+
+	token, err := h.usvc.Login(user.Email, user.Password)
+
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Error logging in user",
+			"status":  http.StatusInternalServerError,
+		})
+	}
+
 	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"message": "User logged in successfully",
 		"status":  http.StatusOK,
+		"token":   token,
 	})
 }
 
