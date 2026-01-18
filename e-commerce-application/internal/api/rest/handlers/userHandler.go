@@ -37,7 +37,7 @@ func SetupUserRoutes(rh *rest.RestHandler) {
 
 	pvtRoutes := app.Group("/api/v1/user", rh.Auth.Authorize)
 
-	pvtRoutes.Get("/verify", handler.GetVerificationCode)
+	pvtRoutes.Get("/get-verification-code", handler.GetVerificationCode)
 	pvtRoutes.Post("/verify", handler.Verify)
 
 	pvtRoutes.Post("/profile", handler.CreateProfile)
@@ -114,13 +114,34 @@ func (h *UserHandler) LoginUser(ctx *fiber.Ctx) error {
 }
 
 func (h *UserHandler) GetVerificationCode(ctx *fiber.Ctx) error {
+	user := h.usvc.Auth.GetCurrentUser(ctx)
+
+	code, err := h.usvc.GetVerificationCode(user)
+
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Error generating verification code",
+			"status":  http.StatusInternalServerError,
+		})
+	}
+
+	if code == "" {
+		return ctx.Status(http.StatusOK).JSON(fiber.Map{
+			"message": "User already verified",
+			"status":  http.StatusOK,
+		})
+	}
+
 	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"message": "User GetVerificationCode in successfully",
 		"status":  http.StatusOK,
+		"data":    code,
 	})
 }
 
 func (h *UserHandler) Verify(ctx *fiber.Ctx) error {
+	user := h.usvc.Auth.GetCurrentUser(ctx)
+
 	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"message": "User Verify in successfully",
 		"status":  http.StatusOK,

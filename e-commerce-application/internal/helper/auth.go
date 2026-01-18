@@ -160,7 +160,7 @@ func (a Auth) GetCurrentUser(ctx *fiber.Ctx) domain.User {
 }
 
 func (a Auth) GenerateCode() (string, error) {
-	return "ojij", nil
+	return RandomNumbers(6)
 }
 
 func (a Auth) VerifyPassword(pP string, hP string) error {

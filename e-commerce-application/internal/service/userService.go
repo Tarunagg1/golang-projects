@@ -1,12 +1,14 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"go-ecommerce-app/internal/domain"
 	"go-ecommerce-app/internal/dto"
 	"go-ecommerce-app/internal/helper"
 	"go-ecommerce-app/internal/repository"
 	"log"
+	"time"
 )
 
 type UserService struct {
@@ -71,9 +73,42 @@ func (us *UserService) Login(email string, password string) (string, error) {
 	return us.Auth.GenrateToken(user.ID, user.Email, "role")
 }
 
-func (us *UserService) GetVerificationCode(e domain.User) int {
-	return 0
+func (us *UserService) isverifiedUser(id uint) bool {
+	currentUser, err := us.Repo.FindUserById(id)
+	return err == nil && currentUser.Verified
 }
+
+func (us *UserService) GetVerificationCode(e domain.User) (string, error) {
+	// check user is verified
+
+	if us.isverifiedUser(e.ID) {
+		return "", nil
+	}
+
+	code, err := us.Auth.GenerateCode()
+	if err != nil {
+		log.Println("Error generating verification code:", err)
+		return "", errors.New("error generating verification code")
+	}
+
+	user := domain.User{
+		Expiry: time.Now().Add(time.Minute * 30),
+		Code:   code,
+	}
+
+	// Update user with verification code
+	_, err = us.Repo.UpdateUser(e.ID, user)
+
+	if err != nil {
+		log.Println("Error updating user with verification code:", err)
+		return "", errors.New("error updating user with verification code")
+	}
+
+	return code, nil
+}
+
+
+
 
 func (s UserService) VerifyCode(id uint, code string) error {
 	return nil
